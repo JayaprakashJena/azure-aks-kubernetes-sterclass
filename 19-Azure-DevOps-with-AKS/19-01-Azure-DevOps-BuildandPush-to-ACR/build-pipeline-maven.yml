@@ -1,0 +1,47 @@
+parameters:
+- name: mavenPomFile
+  type: string
+  default: 'pom.xml'
+  required: true  # The path to the Maven pom.xml file.
+- name: mavenOptions
+  type: string
+  default: '-DskipTests=true'
+  required: false  # The options to pass to Maven.
+- name: mavenServiceConnection
+  type: string
+  default: 'your-maven-service-connection-name'
+  required: true  # The name of the Maven service connection to use.
+- name: buildDir
+  type: string
+  default: 'target'
+  required: true  # The directory where the built application will be placed.
+- name: tag
+  type: string
+  default: '$(Build.BuildId)' or ${BUILD_NUMBER}
+  required: false  # The tag to be added to the built application.
+
+stages:
+- stage: Build
+  displayName: Build Application
+  jobs:
+    - job: Build
+      displayName: Build Job
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      # Authenticate with the Maven service connection
+      - task: MavenAuthenticate@0
+        inputs:
+          MavenServiceConnection: ${{ parameters.mavenServiceConnection }}
+
+      # Build the application using Maven
+      - task: Maven@3
+        inputs:
+          mavenPomFile: ${{ parameters.mavenPomFile }}
+          options: ${{ parameters.mavenOptions }}
+          buildDir: ${{ parameters.buildDir }}
+          goals: 'clean install'
+        # The Maven task cleans, builds, and installs the application.
+
+      tags: |
+        ${{ parameters.tag }}
