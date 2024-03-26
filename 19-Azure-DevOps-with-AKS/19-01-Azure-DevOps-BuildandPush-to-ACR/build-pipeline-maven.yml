@@ -20,6 +20,9 @@ parameters:
   default: '$(Build.BuildId)' or ${BUILD_NUMBER}
   # required: false  # The tag to be added to the built application.
 
+trigger:
+- master
+
 stages:
 - stage: Build
   displayName: Build Application
