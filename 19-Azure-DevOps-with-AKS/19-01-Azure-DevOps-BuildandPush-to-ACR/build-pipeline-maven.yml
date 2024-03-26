@@ -17,7 +17,7 @@ parameters:
   # required: true  # The directory where the built application will be placed.
 - name: tag
   type: string
-  default: '$(Build.BuildId)' or ${BUILD_NUMBER}
+  default: ${BUILD_NUMBER}
   # required: false  # The tag to be added to the built application.
 
 trigger:
@@ -46,5 +46,5 @@ stages:
           goals: 'clean install'
         # The Maven task cleans, builds, and installs the application.
 
-      tags: |
-        ${{ parameters.tag }}
+      # tags: |
+      #   ${{ parameters.tag }}
