@@ -2,7 +2,7 @@ parameters:
 - name: mavenPomFile
   type: string
   default: 'pom.xml'
-  # required: true  # The path to the Maven pom.xml file.
+  required: 'true'
 - name: mavenOptions
   type: string
   default: '-DskipTests=true'
