@@ -2,23 +2,23 @@ parameters:
 - name: mavenPomFile
   type: string
   default: 'pom.xml'
-  required: true  # The path to the Maven pom.xml file.
+  # required: true  # The path to the Maven pom.xml file.
 - name: mavenOptions
   type: string
   default: '-DskipTests=true'
-  required: false  # The options to pass to Maven.
+  # required: false  # The options to pass to Maven.
 - name: mavenServiceConnection
   type: string
   default: 'your-maven-service-connection-name'
-  required: true  # The name of the Maven service connection to use.
+  # required: true  # The name of the Maven service connection to use.
 - name: buildDir
   type: string
   default: 'target'
-  required: true  # The directory where the built application will be placed.
+  # required: true  # The directory where the built application will be placed.
 - name: tag
   type: string
   default: '$(Build.BuildId)' or ${BUILD_NUMBER}
-  required: false  # The tag to be added to the built application.
+  # required: false  # The tag to be added to the built application.
 
 stages:
 - stage: Build
