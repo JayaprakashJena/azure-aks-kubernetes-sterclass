@@ -1,27 +1,29 @@
+# java_maven_build_stage.
+# 
+# This template defines a stage for building a Java application using Maven.
+#
+
 parameters:
 - name: mavenPomFile
   type: string
   default: 'pom.xml'
-  required: 'true'
+  required: 'true'  # The path to the Maven pom.xml file.
 - name: mavenOptions
   type: string
-  default: '-DskipTests=true'
-  # required: false  # The options to pass to Maven.
+  default: '-DskipTests='true''
+  required: 'false'  # The options to pass to Maven.
 - name: mavenServiceConnection
   type: string
   default: 'your-maven-service-connection-name'
-  # required: true  # The name of the Maven service connection to use.
+  required: 'true'  # The name of the Maven service connection to use.
 - name: buildDir
   type: string
   default: 'target'
-  # required: true  # The directory where the built application will be placed.
+  required: 'true'  # The directory where the built application will be placed.
 - name: tag
   type: string
-  default: ${BUILD_NUMBER}
-  # required: false  # The tag to be added to the built application.
-
-trigger:
-- master
+  default: '$(Build.BuildId)'
+  required: 'false'  # The tag to be added to the built application.
 
 stages:
 - stage: Build
@@ -46,5 +48,5 @@ stages:
           goals: 'clean install'
         # The Maven task cleans, builds, and installs the application.
 
-      # tags: |
-      #   ${{ parameters.tag }}
+        tags: |
+          ${{ parameters.tag }}
