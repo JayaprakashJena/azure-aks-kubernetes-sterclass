@@ -1,161 +1,59 @@
-variables:
-  NodeJs: 'Node.json'
-  BuildDir: 'target'
-  angularVersion: 'angular 17'
-  node_version: '14.x'
-  tag: '$(Build.BuildId)' or ${BUILD_NUMBER}
-  SonarQubeServiceConnection: 'yourSonarqubeServiceConnectionName'
-  SonarProjectKey: 'your-project-key'
-  SonarProjectName: 'Your Project Name'
-  sonarProjectVersion: '1.0'
-  JacocoReportPath: 'path/to/your/jacoco/jacoco.xml'
-  SourceDirectories: 'src'
-  TestDirectories: 'src'
-  Sonartsconfigpath: 'tsconfig.json'
-  SonarLanguage: 'ts'
-  SonarSourceEncoding: 'UTF-8'
-  TestReportPaths: 'target/test-reports/*.xml'
-  Exclusions: '**/node_modules/**,**/*.spec.ts'
-  SonarQubeToken: 'your-SonarQubeToken'
-  SonarQubeURL: 'your-SonarQubeURL'
-  TestResultsFiles: '**/*.xml'  # or  '**/test-results.xml'
-  TestRunTitle: 'Angular Unit Tests'
-  PathToPublish: 'ArtifactStagingDirectory'
-  ArtifactName: 'application'
-  ArtifactType: 'zip'
-  PublishLocation: 'Container'
-  ValidationEmail: 'shant.shree@infosys.com | jayaprakash.jena@infosys.com'
-  stageName: 'Deploy'
-  jobName: 'deploy-to-env'
-  environment: 'sit'
-  # variableGroup: 'dev-environmentvariables'
-  dependsOnStage: ''
-  kubernetesServiceConnection: 'kubernetesServiceConnection'
-  dockerImageName: 'docker_image_name'
-  dockerImageTag: '$(Build.BuildId)' or ${BUILD_NUMBER} #  or 'latest'
-  dockerFile: 'docker_file_name'
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
-# Add the following line to enable the trigger
 trigger:
-  branches:
-    include:
-    - main
+- master
 
-# resources:
-# - repository: templates
-#   type: azureRepos
-#   name: your-repo-name
-#   ref: refs/heads/main # or any other branch where the templates are located
+resources:
+- repo: self
 
-- template: template-build-NodeJs.yaml
-  variables:
-    NodeJs: ${{ variables.NodeJs }}
-    buildDir: ${{ variables.buildDir }}
-    tag: $(Build.BuildNumber)
-    angularVersion: ${{ variables.angularVersion }}
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: '3f60d734-2d68-41cf-ae78-e22d45f01a8e'
+  imageRepository: 'customaksnginxapp1'
+  containerRegistry: 'aksdevopsacr.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
 
-- ${{ if eq(parameters.codeCoverage, 'true')}}:
-  - template: template-code-coverage-to-sonarqube.yaml
-    variables:
-      sonarQubeServiceConnection: ${{ variables.sonarQubeServiceConnection }}
-      sonarProjectKey: ${{ variables.sonarProjectKey }}
-      sonarProjectName: ${{ variables.sonarProjectName }}
-      sonarProjectVersion: ${{ variables.sonarProjectversion }}
-      jacocoReportPath: ${{ variables.jacocoReportPath }}
-      sourceDirectories: ${{ variables.sourceDirectories }}
-      TestDirectories: ${{ variables.TestDirectories }}
-      Sonartsconfigpath : ${{ variables.Sonartsconfigpath }}
-      SonarLanguage : ${{ variables.SonarLanguage }}
-      SonarSourceEncoding : ${{ variables.SonarSourceEncoding }}
-      testReportPaths: ${{ variables.testReportPaths }}
-      exclusions: ${{ variables.exclusions }}
-      SonarQubeURL: ${{ variables.sonarQubeURL}}
-      SonarQubeToken: ${{ variables.sonarQubeToken}}
-- ${{if eq(parameters.codeCoverage, 'false')}}:
-  - stage: skipCodeCoverage
-    displayName: "skipping code coverage"
-    jobs: 
-    - job: skip
-      displayName: 'skip job'
-      steps: 
-      - script: |
-          echo "Skipping Code Coverage as per configuration."
-        displayName: 'Skip Code Coverage'
-
-- ${{ if eq(variables.runUnitTests, 'true') }}:
-  - template: template-unit-test.yaml
-  variables:
-    testRunTitle: ${{ variables.testRunTitle }}
-    # NodeJs: ${{ variables.NodeJs }}
-    NodeJsVersion: ${{ variables.NodeJsVersion}}
-    testResultsFiles: ${{ variables.testResultsFiles }}
-- ${{ if eq(variables.runUnitTests, 'false') }}:
-  - stage: skipUnitTest
-    displayName: 'Skipping unit tests'
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
-    jobs:
-    - job: skip
-      displayName: 'Skip job'
-      steps:
-      - script: |
-          echo "Skipping unit tests as per configuration."      
-        displayName: 'Skip unit tests'
-
-- template: shared/template-add-approval.yaml
-  variables:
-    # timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-    notifyUsers: ${{ join(variables.validationEmail, ' | ') }}
-    
-- template: shared/template-publish-artifacts.yaml
-  variables:
-    TargetFolder: ${{ variables.BuildDir }}
-    SourceFolder: ${{ variables.scriptsFolder }}
-    pathtoPublish: ${{ variables.pathtoPublish }}
-    artifactName: ${{ variables.artifactName }}
-    artifactType: ${{ variables.artifactType }}
-    publishLocation: ${{ variables.publishLocation }}
-
-- template: shared/template-deploy-to-env.yaml
-  variables:
-    stage: ${{ variables.stageName }}
-    displayName: ${{ parameters.jobName }}
-    environment: ${{ variables.environmentType }}
-    # group: ${{ variables.VariablesGroup }}
-    dependsOn: ${{ variables.dependsOnStage }}
-    kubernetesServiceConnection: ${{ variables.kubernetesServiceConnection }}
-
-
-- template: shared/template-docker-image.yaml
-  variables:
-    dockerImageName: ${{ variables.docker_image_name }}
-    dockerImageTag: ${{ variables.dockerImageTag }}
-    dockerFile: ${{ variables.docker_file }}
-
-#for update script
-- stage: Update
-  displayName: Update 
-  jobs:
-  - job: Update
-    displayName: Update
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
     steps:
-    - task: ShellScript@2
+    - task: Docker@2
+      displayName: Build and push an image to container registry
       inputs:
-        scriptPath: 'scripts/updateK8sManifests.sh'
-        args: 'vote $(imageRepository) $(tag)'
-steps:
-- template: shared/build-version-variables.yml
-  parameters:
-    buildMajorNumber: 5
-    buildMinorNumber: 0
-    buildVersionHotfixBuildBase: 0
-
-- template: shared/set-build-version.yml
-  parameters:
-    buildVersion: $(buildVersion)
-
-- template: shared/create-git-tag.yml
-  parameters:
-    tagName: $(buildVersion)
-    tagComment: $(buildVersion)
-    latestTag: latest
-    condition: ${{ variables['isArtifactDeployableToProduction'] }}
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+## Publish Artifacts pipeline code in addition to Build and Push          
+    - bash: echo Contents in System Default Working Directory; ls -R $(System.DefaultWorkingDirectory)        
+    - bash: echo Before copying Contents in Build Artifact Directory; ls -R $(Build.ArtifactStagingDirectory)        
+    # Task-2: Copy files (Copy files from a source folder to target folder)
+    # Source Directory: $(System.DefaultWorkingDirectory)/kube-manifests
+    # Target Directory: $(Build.ArtifactStagingDirectory)
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)/kube-manifests'
+        Contents: '**'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+        OverWrite: true
+    # List files from Build Artifact Staging Directory - After Copy
+    - bash: echo After copying to Build Artifact Directory; ls -R $(Build.ArtifactStagingDirectory)  
+    # Task-3: Publish build artifacts (Publish build to Azure Pipelines)           
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'kube-manifests'
+        publishLocation: 'Container'
