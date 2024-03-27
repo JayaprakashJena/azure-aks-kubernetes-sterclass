@@ -1,0 +1,161 @@
+variables:
+  NodeJs: 'Node.json'
+  BuildDir: 'target'
+  angularVersion: 'angular 17'
+  node_version: '14.x'
+  tag: '$(Build.BuildId)' or ${BUILD_NUMBER}
+  SonarQubeServiceConnection: 'yourSonarqubeServiceConnectionName'
+  SonarProjectKey: 'your-project-key'
+  SonarProjectName: 'Your Project Name'
+  sonarProjectVersion: '1.0'
+  JacocoReportPath: 'path/to/your/jacoco/jacoco.xml'
+  SourceDirectories: 'src'
+  TestDirectories: 'src'
+  Sonartsconfigpath: 'tsconfig.json'
+  SonarLanguage: 'ts'
+  SonarSourceEncoding: 'UTF-8'
+  TestReportPaths: 'target/test-reports/*.xml'
+  Exclusions: '**/node_modules/**,**/*.spec.ts'
+  SonarQubeToken: 'your-SonarQubeToken'
+  SonarQubeURL: 'your-SonarQubeURL'
+  TestResultsFiles: '**/*.xml'  # or  '**/test-results.xml'
+  TestRunTitle: 'Angular Unit Tests'
+  PathToPublish: 'ArtifactStagingDirectory'
+  ArtifactName: 'application'
+  ArtifactType: 'zip'
+  PublishLocation: 'Container'
+  ValidationEmail: 'shant.shree@infosys.com | jayaprakash.jena@infosys.com'
+  stageName: 'Deploy'
+  jobName: 'deploy-to-env'
+  environment: 'sit'
+  # variableGroup: 'dev-environmentvariables'
+  dependsOnStage: ''
+  kubernetesServiceConnection: 'kubernetesServiceConnection'
+  dockerImageName: 'docker_image_name'
+  dockerImageTag: '$(Build.BuildId)' or ${BUILD_NUMBER} #  or 'latest'
+  dockerFile: 'docker_file_name'
+
+# Add the following line to enable the trigger
+trigger:
+  branches:
+    include:
+    - main
+
+# resources:
+# - repository: templates
+#   type: azureRepos
+#   name: your-repo-name
+#   ref: refs/heads/main # or any other branch where the templates are located
+
+- template: template-build-NodeJs.yaml
+  variables:
+    NodeJs: ${{ variables.NodeJs }}
+    buildDir: ${{ variables.buildDir }}
+    tag: $(Build.BuildNumber)
+    angularVersion: ${{ variables.angularVersion }}
+
+- ${{ if eq(parameters.codeCoverage, 'true')}}:
+  - template: template-code-coverage-to-sonarqube.yaml
+    variables:
+      sonarQubeServiceConnection: ${{ variables.sonarQubeServiceConnection }}
+      sonarProjectKey: ${{ variables.sonarProjectKey }}
+      sonarProjectName: ${{ variables.sonarProjectName }}
+      sonarProjectVersion: ${{ variables.sonarProjectversion }}
+      jacocoReportPath: ${{ variables.jacocoReportPath }}
+      sourceDirectories: ${{ variables.sourceDirectories }}
+      TestDirectories: ${{ variables.TestDirectories }}
+      Sonartsconfigpath : ${{ variables.Sonartsconfigpath }}
+      SonarLanguage : ${{ variables.SonarLanguage }}
+      SonarSourceEncoding : ${{ variables.SonarSourceEncoding }}
+      testReportPaths: ${{ variables.testReportPaths }}
+      exclusions: ${{ variables.exclusions }}
+      SonarQubeURL: ${{ variables.sonarQubeURL}}
+      SonarQubeToken: ${{ variables.sonarQubeToken}}
+- ${{if eq(parameters.codeCoverage, 'false')}}:
+  - stage: skipCodeCoverage
+    displayName: "skipping code coverage"
+    jobs: 
+    - job: skip
+      displayName: 'skip job'
+      steps: 
+      - script: |
+          echo "Skipping Code Coverage as per configuration."
+        displayName: 'Skip Code Coverage'
+
+- ${{ if eq(variables.runUnitTests, 'true') }}:
+  - template: template-unit-test.yaml
+  variables:
+    testRunTitle: ${{ variables.testRunTitle }}
+    # NodeJs: ${{ variables.NodeJs }}
+    NodeJsVersion: ${{ variables.NodeJsVersion}}
+    testResultsFiles: ${{ variables.testResultsFiles }}
+- ${{ if eq(variables.runUnitTests, 'false') }}:
+  - stage: skipUnitTest
+    displayName: 'Skipping unit tests'
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
+    jobs:
+    - job: skip
+      displayName: 'Skip job'
+      steps:
+      - script: |
+          echo "Skipping unit tests as per configuration."      
+        displayName: 'Skip unit tests'
+
+- template: shared/template-add-approval.yaml
+  variables:
+    # timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+    notifyUsers: ${{ join(variables.validationEmail, ' | ') }}
+    
+- template: shared/template-publish-artifacts.yaml
+  variables:
+    TargetFolder: ${{ variables.BuildDir }}
+    SourceFolder: ${{ variables.scriptsFolder }}
+    pathtoPublish: ${{ variables.pathtoPublish }}
+    artifactName: ${{ variables.artifactName }}
+    artifactType: ${{ variables.artifactType }}
+    publishLocation: ${{ variables.publishLocation }}
+
+- template: shared/template-deploy-to-env.yaml
+  variables:
+    stage: ${{ variables.stageName }}
+    displayName: ${{ parameters.jobName }}
+    environment: ${{ variables.environmentType }}
+    # group: ${{ variables.VariablesGroup }}
+    dependsOn: ${{ variables.dependsOnStage }}
+    kubernetesServiceConnection: ${{ variables.kubernetesServiceConnection }}
+
+
+- template: shared/template-docker-image.yaml
+  variables:
+    dockerImageName: ${{ variables.docker_image_name }}
+    dockerImageTag: ${{ variables.dockerImageTag }}
+    dockerFile: ${{ variables.docker_file }}
+
+#for update script
+- stage: Update
+  displayName: Update 
+  jobs:
+  - job: Update
+    displayName: Update
+    steps:
+    - task: ShellScript@2
+      inputs:
+        scriptPath: 'scripts/updateK8sManifests.sh'
+        args: 'vote $(imageRepository) $(tag)'
+steps:
+- template: shared/build-version-variables.yml
+  parameters:
+    buildMajorNumber: 5
+    buildMinorNumber: 0
+    buildVersionHotfixBuildBase: 0
+
+- template: shared/set-build-version.yml
+  parameters:
+    buildVersion: $(buildVersion)
+
+- template: shared/create-git-tag.yml
+  parameters:
+    tagName: $(buildVersion)
+    tagComment: $(buildVersion)
+    latestTag: latest
+    condition: ${{ variables['isArtifactDeployableToProduction'] }}
