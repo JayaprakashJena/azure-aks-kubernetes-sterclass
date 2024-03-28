@@ -10,20 +10,20 @@ trigger:
 
 
 stages:
-- stage: Build job
+- stage: Build
+  displayName: Build job
   jobs:
   - job: Build
     displayName: 'Build docker image'
   pool:
     vmImage: ubuntu-latest
-  steps:
-  - task: Build
-- task: Docker@2
-  inputs:
-    containerRegistry: 'apll-acr'
-    repository: 'demo'
-    command: 'buildAndPush'
-    Dockerfile: '**/Dockerfile'
-    tags: |
-      $(tag)
+    steps:
+    - task: Docker@2
+      inputs:
+        containerRegistry: 'apll-acr'
+        repository: 'demo'
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          $(tag)
 
