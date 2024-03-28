@@ -1,13 +1,11 @@
 # Stages
 # Stage-1:
   # Task-1: Build Docker Image and push to Azure Container Registry ACR
-  # Task-2: Copy kube-manifest files to Build Artifact Directory
-  # Task-3: Publish build articats to Azure Pipelines
+
 # Pipeline Hierarchial Flow: Stages -> Stage -> Jobs -> Job -> Steps -> Task1, Task2, Task3 
 
 trigger:
 - master
-
 
 stages:
 - stage: Build
@@ -27,3 +25,15 @@ stages:
         tags: |
           $(tag)
 
+  # Task-2: Copy kube-manifest files to Build Artifact Directory
+    - task: Copy@2
+      SourceDirectory: "default directory"
+      Contents: "**"
+      TargetDirectory: "$(artifactStagingDirectory)"
+      OverWrite: "true"
+
+  # Task-3: Publish build articats to Azure Pipelines
+    - task: publishBuildArtifacts@1
+      artifactName: "drop"
+      publishLocation: "Container"
+      pathToPublish: "$(artifactStagingDirectory)"
